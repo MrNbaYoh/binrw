@@ -19,12 +19,14 @@ use syn::Ident;
 pub(crate) fn write_field(field: &StructField) -> TokenStream {
     StructFieldGenerator::new(field)
         .write_field()
+        .store_position()
         .wrap_padding()
         .prefix_args()
         .prefix_write_fn()
         .prefix_map_fn()
         .prefix_magic()
         .wrap_condition()
+        .prefix_store_position()
         .prefix_assertions()
         .finish()
 }
@@ -40,6 +42,54 @@ impl<'a> StructFieldGenerator<'a> {
             field,
             out: TokenStream::new(),
         }
+    }
+
+    fn store_position(mut self) -> Self {
+        let store_position = self.field.store_position.as_ref().map(|position_name| {
+            let mut position = quote! {
+                #SEEK_TRAIT::stream_position(#WRITER)?
+            };
+
+            if self.field.if_cond.is_some() {
+                position = quote! { Some(#position) };
+            }
+
+            quote! {
+                #position_name = #position;
+            }
+        });
+
+        let rest = self.out;
+        self.out = quote! {
+            #store_position
+            #rest
+        };
+
+        self
+    }
+
+    fn prefix_store_position(mut self) -> Self {
+        let define_store_position = self.field.store_position.as_ref().map(|position_name| {
+            let ty = if self.field.if_cond.is_some() {
+                quote! { Option<u64> }
+            } else {
+                quote! { u64 }
+            };
+
+            // assignment is unused if the field has no `if` attribute
+            quote! {
+                #[allow(unused_assignments)]
+                let mut #position_name = <#ty>::default();
+            }
+        });
+
+        let rest = self.out;
+        self.out = quote! {
+            #define_store_position
+            #rest
+        };
+
+        self
     }
 
     fn prefix_assertions(mut self) -> Self {

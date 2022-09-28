@@ -44,6 +44,7 @@ define_keywords! {
     return_all_errors,
     return_unexpected_error,
     seek_before,
+    store_position,
     temp,
     try_map,
     write_with,

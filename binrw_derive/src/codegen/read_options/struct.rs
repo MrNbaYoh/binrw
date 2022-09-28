@@ -137,6 +137,7 @@ fn generate_field(
 
     FieldGenerator::new(field)
         .read_value()
+        .store_position()
         .try_conversion(name, variant_name)
         .map_value()
         .deref_now()
@@ -145,6 +146,7 @@ fn generate_field(
         .assign_to_var()
         .append_assertions()
         .wrap_restore_position()
+        .prefix_store_position()
         .prefix_magic()
         .prefix_args_and_options()
         .prefix_map_function()
@@ -307,6 +309,56 @@ impl<'field> FieldGenerator<'field> {
         self
     }
 
+    fn store_position(mut self) -> Self {
+        let store_position = self.field.store_position.as_ref().map(|position_name| {
+            let mut position = quote! {
+                #SEEK_TRAIT::stream_position(#READER)?
+            };
+
+            if self.field.if_cond.is_some() || self.field.do_try.is_some() {
+                position = quote! { Some(#position) };
+            }
+
+            quote! {
+                #position_name = #position;
+            }
+        });
+
+        let rest = self.out;
+        self.out = quote! {
+            {
+                #store_position
+                #rest
+            }
+        };
+
+        self
+    }
+
+    fn prefix_store_position(mut self) -> Self {
+        let define_store_position = self.field.store_position.as_ref().map(|position_name| {
+            let ty = if self.field.if_cond.is_some() || self.field.do_try.is_some() {
+                quote! { Option<u64> }
+            } else {
+                quote! { u64 }
+            };
+
+            // assignment is unused if the field has no `if` of `try` attribute
+            quote! {
+                #[allow(unused_assignments)]
+                let mut #position_name = <#ty>::default();
+            }
+        });
+
+        let rest = self.out;
+        self.out = quote! {
+            #define_store_position
+            #rest
+        };
+
+        self
+    }
+
     fn prefix_map_function(mut self) -> Self {
         let map_func = make_ident(&self.field.ident, "map_func");
         let ty = &self.field.ty;
@@ -438,7 +490,21 @@ impl<'field> FieldGenerator<'field> {
         if !self.field.generated_value() {
             let result = &self.out;
             self.out = if self.field.do_try.is_some() {
-                quote! { #result.unwrap_or(<_>::default()) }
+                if let Some(position_name) = self.field.store_position.as_ref() {
+                    // if position is stored and read has failed
+                    // we must set the stored position to None
+                    quote! {
+                        #result.unwrap_or_else(|_| {
+                            #position_name = None;
+                            <_>::default()
+                        })
+                    }
+                } else {
+                    // otherwise just return the default it it fails
+                    quote! {
+                       #result.unwrap_or_default()
+                    }
+                }
             } else {
                 let map_err = get_err_context(self.field, name, variant_name);
                 quote! { #result #map_err ? }

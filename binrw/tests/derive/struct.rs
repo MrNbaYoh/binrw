@@ -573,3 +573,88 @@ fn tuple_calc_temp_field() {
     // compilation would fail if it weren’t due to missing a second item
     assert_eq!(result, Test(5u32));
 }
+
+#[test]
+fn store_position() {
+    #[binread]
+    #[derive(Debug, Eq, PartialEq)]
+    #[br(little)]
+    struct Test {
+        a: u32,
+        #[br(store_position = position_of_b)]
+        b: u64,
+        #[br(calc = position_of_b)]
+        c: u64,
+    }
+
+    let result = Test::read(&mut Cursor::new(b"\0\0\0\0\0\0\0\0\0\0\0\0")).unwrap();
+    assert_eq!(result, Test { a: 0, b: 0, c: 4 });
+}
+
+#[test]
+fn store_position_if_cond() {
+    #[binread]
+    #[derive(Debug, Eq, PartialEq)]
+    #[br(little)]
+    struct Test {
+        a: u32,
+        #[br(if(a == 0), store_position = position_of_b)]
+        b: u64,
+        #[br(calc = position_of_b)]
+        c: Option<u64>,
+    }
+
+    let result = Test::read(&mut Cursor::new(b"\0\0\0\0\0\0\0\0\0\0\0\0")).unwrap();
+    assert_eq!(
+        result,
+        Test {
+            a: 0,
+            b: 0,
+            c: Some(4),
+        }
+    );
+
+    let result = Test::read(&mut Cursor::new(b"\x01\0\0\0\0\0\0\0\0\0\0\0")).unwrap();
+    assert_eq!(
+        result,
+        Test {
+            a: 1,
+            b: 0,
+            c: None,
+        }
+    );
+}
+
+#[test]
+fn store_position_try() {
+    #[binread]
+    #[derive(Debug, Eq, PartialEq)]
+    #[br(little)]
+    struct Test {
+        a: u32,
+        #[br(try, store_position = position_of_b)]
+        b: u64,
+        #[br(calc = position_of_b)]
+        c: Option<u64>,
+    }
+
+    let result = Test::read(&mut Cursor::new(b"\0\0\0\0\0\0\0\0\0\0\0\0")).unwrap();
+    assert_eq!(
+        result,
+        Test {
+            a: 0,
+            b: 0,
+            c: Some(4),
+        }
+    );
+
+    let result = Test::read(&mut Cursor::new(b"\0\0\0\0")).unwrap();
+    assert_eq!(
+        result,
+        Test {
+            a: 0,
+            b: 0,
+            c: None,
+        }
+    );
+}

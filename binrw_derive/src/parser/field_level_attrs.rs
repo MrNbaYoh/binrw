@@ -58,6 +58,8 @@ attr_struct! {
         pub(crate) seek_before: Option<TokenStream>,
         #[from(RW:PadSizeTo)]
         pub(crate) pad_size_to: Option<TokenStream>,
+        #[from(RW:StorePosition)]
+        pub(crate) store_position: Option<TokenStream>,
     }
 }
 
@@ -158,6 +160,11 @@ impl StructField {
             );
         }
 
+        if self.generated_value() && self.store_position.is_some() {
+            let span = self.store_position.as_ref().unwrap().span();
+            combine_error(&mut all_errors, syn::Error::new(span, "cannot store the position of a generated value, `store_position` is incompatible with `default` and `calc`"));
+        }
+
         if self.do_try.is_some() && self.generated_value() {
             //TODO: join with span of read mode somehow
             let span = self.do_try.as_ref().unwrap().span();
@@ -237,6 +244,7 @@ impl FromField for StructField {
             pad_size_to: <_>::default(),
             keyword_spans: <_>::default(),
             err_context: <_>::default(),
+            store_position: <_>::default(),
         };
 
         let result = if options.write {

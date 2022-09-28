@@ -1,8 +1,8 @@
 use super::{
     keywords as kw,
     meta_types::{
-        IdentPatType, IdentTypeMaybeDefault, MetaEnclosedList, MetaExpr, MetaList, MetaLit,
-        MetaType, MetaValue, MetaVoid,
+        IdentPatType, IdentTypeMaybeDefault, MetaEnclosedList, MetaExpr, MetaIdent, MetaList,
+        MetaLit, MetaType, MetaValue, MetaVoid,
     },
 };
 use syn::{Expr, FieldValue, Token};
@@ -41,6 +41,7 @@ pub(super) type RestorePosition = MetaVoid<kw::restore_position>;
 pub(super) type ReturnAllErrors = MetaVoid<kw::return_all_errors>;
 pub(super) type ReturnUnexpectedError = MetaVoid<kw::return_unexpected_error>;
 pub(super) type SeekBefore = MetaExpr<kw::seek_before>;
+pub(super) type StorePosition = MetaIdent<kw::store_position>;
 pub(super) type Temp = MetaVoid<kw::temp>;
 pub(super) type Try = MetaVoid<Token![try]>;
 pub(super) type TryMap = MetaExpr<kw::try_map>;

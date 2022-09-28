@@ -7,7 +7,7 @@ use syn::{
     punctuated::Punctuated,
     spanned::Spanned,
     token::{self, Token},
-    Expr, Lit, Token, Type,
+    Expr, Ident, Lit, Token, Type,
 };
 
 type Fields<T> = Punctuated<T, Token![,]>;
@@ -32,6 +32,13 @@ pub(crate) type MetaType<Keyword> = MetaValue<Keyword, Type>;
 /// * ident = lit
 /// both are always allowed
 pub(crate) type MetaLit<Keyword> = MetaValue<Keyword, Lit>;
+
+/// `MetaIdent` represents a key/ident pair
+/// Takes two forms:
+/// * ident(ident)
+/// * ident = ident
+/// both are always allowed
+pub(crate) type MetaIdent<Keyword> = MetaValue<Keyword, Ident>;
 
 #[derive(Debug, Clone)]
 pub(crate) struct MetaValue<Keyword, Value> {
